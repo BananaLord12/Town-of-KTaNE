@@ -36,6 +36,7 @@ public class ResourceScript {
     public bool ismafiosopresent = false;
     public bool isspypresent = false;
     public bool ismessagesdone = false;
+    public string fm;
     public int _modID = 0;
     public List<int> Spy_pos = new List<int>();
     public int x;
@@ -68,7 +69,7 @@ public class ResourceScript {
                                         new string[] { "Veteran", "0", "No", "Basic","None"},
                                         new string[] { "Vigilante", "5", "Yes", "Basic","None"},
                                         new string[] { "Werewolf", "5", "Yes", "Powerful","Basic"} };
-    public string[] Player_Names = new string[] { "BananaLord", "Sam", "Limeboy", "Katarina", "EpicToast", "LeGeND", "samfun", "Strike", "Cooldoom5", "Weird", "Peanut", "Pruz", "Kusane", "Deaf", "Finder", "Jack", "Fang", "CrunchyBot", "Mr. Porcu", "Emik", "Danny", "Zanu", "Andrio", "LordKabewm", "Usernam3", "Tach", "Vinco", "Qkrisi", "yabbaguy", "Spookdood", "Grunkle", "Nico", "GhostSalt", "Betshet", "DragonManiac","Xmaster","Arceus", "PlaymationWizz" };
+    public string[] Player_Names = new string[] { "BananaLord", "Sam", "Limeboy", "Katarina", "EpicToast", "LeGeND", "samfun", "Strike", "Cooldoom5", "Weird", "Peanut", "Pruz", "Kusane", "Deaf", "Finder", "Jack", "Fang", "CrunchyBot", "Mr. Porcu", "Emik", "Danny", "Zanu", "Andrio", "LordKabewm", "Usernam3", "Tach", "Vinco", "Qkrisi", "yabbaguy", "Spookdood", "Grunkle", "Nico", "GhostSalt", "Betshet", "DragonManiac","Xmaster","Arceus", "PlaymationWizz","Ob3vious" };
     public string[] Fake_Messages = new string[] { "You were jailed!", "You were attacked and healed by a doctor!", "You were attacked and protected by a bodyguard!", "You were attacked and healed by a Guardian Angel!", "You were attacked but your defense was too strong!", "You were role-blocked!", "Your target was jailed!","You were converted by a vampire!", "You are dead!" };
     public string[] Sheriff_Messages = new string[] { "You were jailed!", "You were attacked and healed by a doctor!", "You were attacked and protected by a bodyguard!", "You were attacked and healed by a Guardian Angel!", "You were attacked but your defense was too strong!", "You were role-blocked!", "Your target was jailed!", "You were converted by a vampire!", "You are dead!","Your target is good!","Your Target is evil" };
     public string[] Consig_Messages = new string[] { "You were jailed!", "You were attacked and healed by a doctor!", "You were attacked and protected by a bodyguard!", "You were attacked and healed by a Guardian Angel!", "You were attacked but your defense was too strong!", "You were role-blocked!", "Your target was jailed!", "You were converted by a vampire!", "You are dead!","Your target's role is " };
@@ -89,10 +90,11 @@ public class ResourceScript {
     public int[] visiting_arrows = new int[8];
     public string AlphabetLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    public ResourceScript(KMBombInfo Bomb, int _modID)
+    public ResourceScript(KMBombInfo Bomb, int _modID,Town_of_KTaNE tok)
     {
         this.Bomb = Bomb;
         this._modID = _modID;
+        this.tok = tok;
     }
 
     public string getCollumn1Roles(char l)
@@ -338,7 +340,9 @@ public class ResourceScript {
 
     public IEnumerator Name_Chooser(TextMesh Player_joined)
     {
+        
         isnamespresent = true;
+        tok.isAnimating = true;
         int i = 0;
         while (isnamespresent)
         {
@@ -346,6 +350,7 @@ public class ResourceScript {
             {
                 Player_joined.text = "";
                 isnamespresent = false;
+                tok.isAnimating = false;
                 yield break;
             }
             string format = "{0} has joined the Town!";
@@ -358,7 +363,7 @@ public class ResourceScript {
             Player_joined.text = String.Format(format, chosen_playername);
             Players_name[i] = chosen_playername;
             i++;
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(1f);
         }
     }
 
@@ -950,7 +955,11 @@ public class ResourceScript {
                         break;
                     }
                     var bomb = Bomb.GetSerialNumberNumbers().Last() == 9 ? 0 : Bomb.GetSerialNumberNumbers().Last();
-                    var fm = Fake_Messages[bomb-1];
+                    if(bomb == 0)
+                    {
+                        fm = Fake_Messages[bomb];
+                    }
+                    else { fm = Fake_Messages[bomb - 1]; }
                     hypno.Add(fm);
                     Debug.LogFormat("[Town of KTaNE #{0}] {1}",_modID,fm);
                     Messages[Hypnotist_arrow - 1][12] = fm;
@@ -1174,7 +1183,6 @@ public class ResourceScript {
                     Messages[i][14] = "Your target visited "+Players_roles[target_arrow - 1];
                     break;
                 case "Vampire":
-                    List<string> vamp = new List<string>();
                     if (isJailed(i, visiting_arrows))
                     {
                         Debug.LogFormat("[Town of KTaNE #{0}] Vampire has been jailed", _modID);
@@ -1205,7 +1213,7 @@ public class ResourceScript {
                         break;
                     }
                     Debug.LogFormat("[Town of KTaNE #{0}] The Vampire has converted the {1}", _modID, Players_roles[Vampire_arrow - 1]);
-                    vamp.Add("You were converted by a Vampire!");
+                    Messages[Vampire_arrow - 1][7] = "You were converted by a Vampire!";
                     ismessagesdone = true;
                     break;
                 case "Vampire Hunter":
@@ -1395,14 +1403,40 @@ public class ResourceScript {
                 {
                     foreach (var msg in Messages[Spy_arrow1-1])
                     {
-                        if (msg == null) { break; };
                         Debug.Log(msg);
+                        if (msg == null) { break; };                       
+                        if(msg == "You were jailed!"){
+                            Messages[spypos][0] = "You were jailed!";
+                        }
+                        else if(msg == "You were attacked and healed by a doctor!"){
+                            Messages[spypos][1] = "You were attacked and healed by a doctor!";
+                        }
+                        else if (msg == "You were attacked and protected by a bodyguard!"){
+                            Messages[spypos][2] = "You were attacked and protected by a bodyguard!";
+                        }
+                        else if (msg == "You were attacked and healed by a GA!"){
+                            Messages[spypos][3] = "You were attacked and healed by a GA!";
+                        }
+                        else if (msg == "You were attacked but your defense was too strong!"){
+                            Messages[spypos][4] = "You were attacked but your defense was too strong!";
+                        }
+                        else if (msg == "You were role-blocked!"){
+                            Messages[spypos][5] = "You were role-blocked!";
+                        }
+                        else if (msg == "Your target was jailed"){
+                            Messages[spypos][6] = "Your target was jailed";
+                        }
+                        else if (msg == "You were converted by a vampire!"){
+                            Messages[spypos][7] = "You were converted by a vampire!";
+                        }
+                        else if (msg == "You are dead!"){
+                            Messages[spypos][8] = "You are dead!";
+                        }
+
                     }
                 }
             }
-
         }
-        //ShowMessages();
     }
 
     public bool isJailed(int player, int[] visiting_arrows)
@@ -1512,6 +1546,7 @@ public class ResourceScript {
 
     public bool istargetprotbyBG(int playerarrow, int player)
     {
+        return false;
         int x = 0;
         foreach (int arrow in visiting_arrows)
         {
@@ -1584,20 +1619,8 @@ public class ResourceScript {
         }
         return;
     }
-
-    //void ShowMessages()
-    //{
-    //    int i = 0;
-    //    foreach(var message in Messages)
-    //    {
-    //        i++;
-    //        Debug.LogFormat("Messages for Player {0}!",i);
-    //        if(message == null) { continue; }
-    //        foreach(var msg in message)
-    //        {
-    //            if(msg == null) { continue; }
-    //            Debug.Log(msg);
-    //        }
-    //    }
-    //}
+    public string[][] GetMessages()
+    {
+        return Messages;
+    }
 }

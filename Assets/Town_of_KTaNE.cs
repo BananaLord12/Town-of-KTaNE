@@ -20,6 +20,7 @@ public class Town_of_KTaNE : MonoBehaviour {
     public TextMesh Message_mesh;
     public TextMesh MessageRole_mesh;
     public TextMesh Submit_mesh;
+    public TextMesh Return_mesh;
     public TextMesh Moon_number;
     public KMSelectable[] RoleArrows;
     public KMSelectable RolesDisplay;
@@ -29,10 +30,12 @@ public class Town_of_KTaNE : MonoBehaviour {
     public KMSelectable MessageRoleDisplay;
     public KMSelectable Display;
     public KMSelectable Submit;
+    public KMSelectable Return;
     public KMSelectable BUTTon;
     public GameObject Roles;
     public GameObject Arrows_to_Players;
     public GameObject[] Player1_Arrows, Player2_Arrows, Player3_Arrows, Player4_Arrows, Player5_Arrows, Player6_Arrows, Player7_Arrows, Player8_Arrows;
+    public AudioClip[] audioclips;
 
     //Scripts
     public ResourceScript resource;
@@ -53,6 +56,7 @@ public class Town_of_KTaNE : MonoBehaviour {
     bool[] isPlayersub = new bool[8];
     bool ismoonpressed = false;
     bool isRoleSelected = false;
+    public bool isAnimating = false;
 
     // Use this for initialization
     private void Awake()
@@ -63,7 +67,8 @@ public class Town_of_KTaNE : MonoBehaviour {
     void Start()
     {
         StartCoroutine(UpdateHighlights());
-        resource = new ResourceScript(Bomb,_modID);
+        resource = new ResourceScript(Bomb,_modID,this);
+        //Audio.PlaySoundAtTransform(audioclips[3].name, transform);
         StartCoroutine(resource.Name_Chooser(Player_joined));
         resource.Top_letters = new List<char>();
         resource.Bottom_letters = new List<char>();
@@ -88,10 +93,12 @@ public class Town_of_KTaNE : MonoBehaviour {
                 GenerateLetter(4, i);
             }
         }
-        Moon_button.OnInteract += delegate () { if (!ismoonpressed) { ismoonpressed = true; resource.Roles_Fight(); } return false; };
+        Moon_button.OnInteract += delegate () { if (!ismoonpressed && !isAnimating) { ismoonpressed = true; resource.Roles_Fight(); } return false; };
         foreach(KMSelectable button in Players)
         {
             button.OnInteract += delegate () { if (ismoonpressed) { Submission(button); } else { GetComponent<KMBombModule>().HandleStrike(); Debug.LogFormat("[Town of KTaNE #{0}] It clearly states in the manual that when you are READY you should CLICK on the MOON first!", _modID); } return false; };
+            button.OnHighlight += delegate () { if (ismoonpressed) { Player_joined.text = resource.Players_name[Array.IndexOf(Players, button)]; } return; };
+            button.OnHighlightEnded += delegate () { if (ismoonpressed) { Player_joined.text = ""; } return; };
         }
         foreach(KMSelectable arrow in RoleArrows)
         {
@@ -106,6 +113,7 @@ public class Town_of_KTaNE : MonoBehaviour {
             msgrole.OnInteract += delegate () { MessageRoleArrowPress(msgrole); return false; };
         }
         Submit.OnInteract += delegate () { SubmitBUTT(); return false; };
+        Return.OnInteract += delegate () { ReturntoGame(); return false; };
         MessagesDisplay.OnInteract += delegate () { MessageDisplay(); return false; };
         MessageRoleDisplay.OnInteract += delegate () { MessagesRoleDisplay(); return false; };
     }
@@ -436,11 +444,6 @@ public class Town_of_KTaNE : MonoBehaviour {
         {
             return;
         }
-        else
-        {
-            Players_Letter[num - 1].color = new Color32(0, 255, 0, 255);
-            isPlayersub[num - 1] = true;
-        }
         foreach (KMSelectable player1 in Players)
         {
             player1.gameObject.SetActive(false);
@@ -472,6 +475,9 @@ public class Town_of_KTaNE : MonoBehaviour {
         Submit.Highlight.gameObject.SetActive(true);
         Submit_mesh.GetComponent<Renderer>().enabled = true;
 
+        Return.GetComponent<Renderer>().enabled = true;
+        Return.Highlight.gameObject.SetActive(true);
+        Return_mesh.GetComponent<Renderer>().enabled = true;
 
         desiredrole = resource.Players_roles[num - 1];
 
@@ -501,21 +507,10 @@ public class Town_of_KTaNE : MonoBehaviour {
                         break;
                 }
                 isRoleSelected = true;
-                Debug.Log(isRoleSelected);
             }
             else
             {
                 GetComponent<KMBombModule>().HandleStrike();
-            }
-
-            return false;
-        };
-        Debug.Log(button);
-        Display.OnInteract += delegate ()
-        {
-            foreach(var msg in messagessolved)
-            {
-                Debug.Log(msg);
             }
             return false;
         };
@@ -535,6 +530,7 @@ public class Town_of_KTaNE : MonoBehaviour {
         MessageRoleDisplay.Highlight.gameObject.SetActive(false);
         Display.Highlight.gameObject.SetActive(false);
         Submit.Highlight.gameObject.SetActive(false);
+        Return.Highlight.gameObject.SetActive(false);
         yield break;
     }
 
@@ -590,13 +586,11 @@ public class Town_of_KTaNE : MonoBehaviour {
         if(Message_mesh.text == "Your target's role is ")
         {
             var ressult = "Your target's role is " + MessageRole_mesh.text+".";
-            Debug.Log(ressult);
             messagessolved.Add(ressult);
         }
         else if (Message_mesh.text == "Your target visited ")
         {
             var ressult = "Your target visited " + MessageRole_mesh.text + ".";
-            Debug.Log(ressult);
             messagessolved.Add(ressult);
         }
     }
@@ -822,27 +816,34 @@ public class Town_of_KTaNE : MonoBehaviour {
         string player = BUTTon.ToString();
         char c = player.ElementAt(7);
         var num = int.Parse(c.ToString());
-        Debug.Log(num);
-        messagessubmit = new List<string>(0);
-        foreach (var msg in resource.Messages[num - 1])
+        messagessubmit = new List<string>();
+        foreach (var msg in resource.GetMessages()[num-1].Where(x => x != null))
         {
-             messagessubmit.Add(msg);
+            if (resource.GetMessages()[num - 1].Where(x => x != null).Count() == 0)
+            {
+                continue;
+            }
+            messagessubmit.Add(msg.ToLower().Trim());
         }
         bool ismatched = false;
         for(int i = 0; i < messagessolved.Count; i++)
         {
-            if (messagessubmit.Contains(messagessolved[i]))
+            if(messagessolved.Count() > messagessubmit.Count())
             {
-                ismatched = true;             
+                break;
+            }
+            if(messagessubmit.Contains(messagessolved[i].ToLower().Trim()))
+            {
+                ismatched = true;
             }
         }
-        if (messagessubmit[0] == null && messagessolved.Count()==0)
+        if (messagessubmit.Count() == 0 && messagessolved.Count()==0)
         {
             ismatched = true;
         }
         if (!ismatched)
         {
-            messagessolved = new List<string>(0);
+            messagessolved.Clear();
             GetComponent<KMBombModule>().HandleStrike();
             return;
         }
@@ -894,6 +895,10 @@ public class Town_of_KTaNE : MonoBehaviour {
         Submit.Highlight.gameObject.SetActive(false);
         Submit_mesh.GetComponent<Renderer>().enabled = false;
 
+        Return.GetComponent<Renderer>().enabled = false;
+        Return.Highlight.gameObject.SetActive(false);
+        Return_mesh.GetComponent<Renderer>().enabled = false;
+
         MessageRoleArrows[0].Highlight.gameObject.SetActive(false);
         MessageRoleArrows[0].GetComponent<Renderer>().enabled = false;
 
@@ -913,6 +918,70 @@ public class Town_of_KTaNE : MonoBehaviour {
                 Players_Letter[num-1].color = new Color32(255, 255, 0, 255);
             }
         }
+        if (isPlayersub[num - 1] == true)
+        {
+            return;
+        }
+        else
+        {
+            Players_Letter[num - 1].color = new Color32(0, 255, 0, 255);
+            isPlayersub[num - 1] = true;
+        }
         messagessolved.Clear();
     }
+
+    void ReturntoGame()
+    {
+        foreach (KMSelectable player1 in Players)
+        {
+            player1.gameObject.SetActive(true);
+        }
+        Arrows_to_Players.SetActive(true);
+        Moon_button.gameObject.SetActive(true);
+
+        RolesDisplay.GetComponent<Renderer>().enabled = false;
+        RolesDisplay.Highlight.gameObject.SetActive(false);
+        Role_mesh.GetComponent<Renderer>().enabled = false;
+
+        RoleArrows[0].GetComponent<Renderer>().enabled = false;
+        RoleArrows[0].Highlight.gameObject.SetActive(false);
+
+        RoleArrows[1].GetComponent<Renderer>().enabled = false;
+        RoleArrows[1].Highlight.gameObject.SetActive(false);
+
+        MessagesDisplay.GetComponent<Renderer>().enabled = false;
+        MessagesDisplay.Highlight.gameObject.SetActive(false);
+        Message_mesh.GetComponent<Renderer>().enabled = false;
+
+        MessageArrows[0].GetComponent<Renderer>().enabled = false;
+        MessageArrows[0].Highlight.gameObject.SetActive(false);
+
+        MessageArrows[1].GetComponent<Renderer>().enabled = false;
+        MessageArrows[1].Highlight.gameObject.SetActive(false);
+
+        Display.GetComponent<Renderer>().enabled = false;
+        Display.Highlight.gameObject.SetActive(false);
+
+        Submit.GetComponent<Renderer>().enabled = false;
+        Submit.Highlight.gameObject.SetActive(false);
+        Submit_mesh.GetComponent<Renderer>().enabled = false;
+
+        Return.GetComponent<Renderer>().enabled = false;
+        Return.Highlight.gameObject.SetActive(false);
+        Return_mesh.GetComponent<Renderer>().enabled = false;
+
+        MessageRoleArrows[0].Highlight.gameObject.SetActive(false);
+        MessageRoleArrows[0].GetComponent<Renderer>().enabled = false;
+
+        MessageRoleArrows[1].Highlight.gameObject.SetActive(false);
+        MessageRoleArrows[1].GetComponent<Renderer>().enabled = false;
+
+        MessageRoleDisplay.Highlight.gameObject.SetActive(false);
+        MessageRoleDisplay.GetComponent<Renderer>().enabled = false;
+        MessageRole_mesh.GetComponent<Renderer>().enabled = false;
+        StartCoroutine(UpdateHighlights());
+        index = 0;
+        index1 = 0;
+    }
+
 }
