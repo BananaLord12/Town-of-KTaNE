@@ -68,7 +68,7 @@ public class Town_of_KTaNE : MonoBehaviour {
     {
         StartCoroutine(UpdateHighlights());
         resource = new ResourceScript(Bomb,_modID,this);
-        //Audio.PlaySoundAtTransform(audioclips[3].name, transform);
+        Audio.PlaySoundAtTransform("Selection", transform);
         StartCoroutine(resource.Name_Chooser(Player_joined));
         resource.Top_letters = new List<char>();
         resource.Bottom_letters = new List<char>();
